@@ -11,7 +11,7 @@ def get_llm():
     return ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0.3)
 
 # Define function to generate system prompt
-def get_system_prompt(query):
+def get_system_prompt(desc):
     llm = get_llm()
     prompt = ChatPromptTemplate.from_template(
         """
@@ -32,8 +32,31 @@ def get_system_prompt(query):
         Avoid generic roles; instead, use specific ones such as 'Healthcare Operations Specialist,' 'Technology Product Strategist,' 'Finance Data Analyst,' etc. 
         """
     )
-    chain = LLMChain(prompt=prompt, llm=llm)
-    return chain.run(query)
+    chain = prompt | llm
+    system_prompt = chain.invoke(desc).content
+    return system_prompt
+
+def get_human_prompt(desc):
+    llm = get_llm()
+    prompt = ChatPromptTemplate.from_template(
+        """
+        You are an expert in creating clear, concise, and actionable instructions for humans.  
+        Write a human prompt that provides a clear and specific task to be completed based on a given query.  
+        The query will be provided as input.  
+
+        The human prompt should be clear, task-focused, and easy to understand.  
+        Include necessary details, but avoid overloading with information.  
+
+        Query: {query}  
+
+        Example start: 'Please write...', 'Your task is to...', 'Provide a...'  
+
+        Avoid abstract or overly general instructions. Make the task actionable, with clear deliverables or objectives.
+        """
+    )
+    chain = prompt | llm
+    human_prompt = chain.invoke(desc).content
+    return human_prompt
 
 # Streamlit app
 st.title("System Prompt Generator")
@@ -44,10 +67,15 @@ query = st.text_area("Enter your query:", height=200)
 if st.button("Generate System Prompt"):
     if query.strip():
         try:
-            st.write("Generating system prompt...")
+            st.write("Generating Prompt...")
             system_prompt = get_system_prompt(query)
+            human_prompt = get_human_prompt(query)
+            
             st.subheader("Generated System Prompt:")
-            st.code(system_prompt, language="text")
+            st.write(system_prompt)
+            
+            st.subheader("Generated Human Prompt:")
+            st.write(human_prompt)
         except Exception as e:
             st.error(f"Error: {str(e)}")
     else:
